@@ -1,0 +1,102 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Represents profiles of students and teachers",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique Firebase auth ID" },
+        "name": { "type": "string", "description": "Full name of the user" },
+        "email": { "type": "string", "format": "email", "description": "Email address" },
+        "mobile": { "type": "string", "description": "Contact mobile number" },
+        "role": { "type": "string", "enum": ["student", "admin"], "description": "Access privileges" },
+        "batch": { "type": "string", "description": "Batch name (for students)" },
+        "rollNumber": { "type": "string", "description": "Academic Roll number" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["uid", "name", "role"]
+    },
+    "Test": {
+      "title": "JEE Test",
+      "description": "Represents a JEE mock test uploaded by a teacher",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "subject": { "type": "string" },
+        "duration": { "type": "integer", "description": "Duration in minutes" },
+        "maxMarks": { "type": "integer" },
+        "status": { "type": "string", "enum": ["draft", "scheduled", "live", "completed"] },
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": "string", "format": "date-time" },
+        "pdfUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["id", "name", "subject", "duration", "maxMarks", "status", "startTime", "endTime"]
+    },
+    "Question": {
+      "title": "Question Response Item",
+      "description": "An entry in the answer key for a particular test",
+      "type": "object",
+      "properties": {
+        "questionNumber": { "type": "integer" },
+        "correctOption": { "type": "string", "enum": ["A", "B", "C", "D"] },
+        "subject": { "type": "string" },
+        "chapter": { "type": "string" },
+        "topic": { "type": "string" },
+        "difficulty": { "type": "string", "enum": ["Easy", "Medium", "Hard"] }
+      },
+      "required": ["questionNumber", "correctOption", "subject"]
+    },
+    "Attempt": {
+      "title": "Test Attempt",
+      "description": "A student's attempt of a particular mock test",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "testId": { "type": "string" },
+        "testName": { "type": "string" },
+        "userId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "studentMobile": { "type": "string" },
+        "studentBatch": { "type": "string" },
+        "studentRollNumber": { "type": "string" },
+        "answers": { "type": "object", "description": "Mapping of question numbers to marked option strings" },
+        "markedForReview": { "type": "object", "description": "Mapping of question numbers to booleans" },
+        "submitted": { "type": "boolean" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": "string", "format": "date-time" },
+        "score": { "type": "integer" },
+        "correctAnswers": { "type": "integer" },
+        "wrongAnswers": { "type": "integer" },
+        "unattempted": { "type": "integer" },
+        "accuracy": { "type": "number" },
+        "subjectScores": { "type": "object" },
+        "aiAnalysis": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "testId", "userId", "answers", "submitted"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Access profiles of students and admin teachers"
+    },
+    "/tests/{testId}": {
+      "schema": "Test",
+      "description": "Uploaded mock test detail configuration"
+    },
+    "/tests/{testId}/questions/{questionNumber}": {
+      "schema": "Question",
+      "description": "The specific correct answers and metadata for a test item"
+    },
+    "/attempts/{attemptId}": {
+      "schema": "Attempt",
+      "description": "Submissions and live trace records of the student exam attempts"
+    }
+  }
+}

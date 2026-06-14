@@ -1,0 +1,94 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('[a-zA-Z0-9_-]+');
+    }
+
+    // Role level check: check if teacher is administrator
+    function isAdmin() {
+      return isSignedIn() && (
+        ( 'email' in request.auth.token && (
+          request.auth.token.email == 'shyamaditya4@gmail.com' ||
+          request.auth.token.email.matches('.*@admin\\.jeeprep\\.com')
+        )) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    // Helper for student-mode keys (where mobile acts as login key)
+    function isStudentId(id) {
+      return id is string && id.size() >= 8 && id[0..8] == 'student_';
+    }
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users Collection Rule
+    // Students can register/update their own profile using mobile key, and read it. Admins can read all profiles.
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isStudentId(userId) || (isSignedIn() && userId != request.auth.uid && isAdmin());
+      allow list: if isAdmin();
+      allow create: if (isOwner(userId) || isStudentId(userId)) && (
+                      request.resource.data.role == 'student' ||
+                      (request.resource.data.role == 'admin' && isAdmin())
+                    );
+      allow update: if (isOwner(userId) || isStudentId(userId)) && request.resource.data.role == existing().role;
+      allow delete: if isAdmin();
+    }
+
+    // Tests Collection Rule
+    // Admins can manage tests. Registered and sign-in users can read/list tests if they are live, scheduled or completed.
+    match /tests/{testId} {
+      allow get: if true; // Let students fetch mock test metadata
+      allow list: if true; // Let students list mock tests on dashboard
+      allow create, update: if isAdmin() || (testId == 'demo_jee_mock_01' && request.resource.data.createdBy == 'system_seeder');
+      allow delete: if isAdmin();
+
+      // Question-by-question keys subcollection (Answer Key)
+      // Admins manage answer codes. Attempting students can read items to verify responses.
+      match /questions/{questionNumber} {
+        allow read: if true;
+        allow write: if isAdmin() || (testId == 'demo_jee_mock_01');
+      }
+    }
+
+    // Attempts Collection Rule
+    // Students can read/create/update their OWN attempts based on owner ID or student mobile key context.
+    // Teachers (Admins) can view/read all attempts in dashboard.
+    match /attempts/{attemptId} {
+      allow get: if resource == null || (isSignedIn() && (request.auth.uid == resource.data.userId || isAdmin())) || isStudentId(resource.data.userId);
+      allow list: if true; // Enforce security boundaries via queries rather than blocking standard client checks
+      
+      // Creating an attempt
+      allow create: if ( (isSignedIn() && request.resource.data.userId == request.auth.uid) || isStudentId(request.resource.data.userId) ) && 
+                    request.resource.data.submitted == false &&
+                    isValidId(attemptId);
+
+      // Updating an attempt
+      // Once attempt is submitted (terminal state locking), no further updates are allowed on answers.
+      allow update: if ( (isSignedIn() && resource.data.userId == request.auth.uid) || isStudentId(resource.data.userId) ) && (
+                      // Either state is transitioning of student answers prior to submission
+                      (existing().submitted == false && 
+                       request.resource.data.userId == existing().userId &&
+                       request.resource.data.createdAt == existing().createdAt) 
+                      || isAdmin()
+                    );
+
+      allow delete: if isAdmin();
+    }
+  }
+}

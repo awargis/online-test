@@ -1,0 +1,6 @@
+{
+  "name": "JEE Mock Test Platform",
+  "description": "A premium online JEE mock test platform with PDF viewer, digital OMR sheet, auto-evaluation, real-time sync, and AI-powered performance analysis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
